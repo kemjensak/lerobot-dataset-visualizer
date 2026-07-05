@@ -7,6 +7,7 @@ import { SimpleVideosPlayer } from "@/components/simple-videos-player";
 import PlaybackBar from "@/components/playback-bar";
 import { TimeProvider, useTime } from "@/context/time-context";
 import { FlaggedEpisodesProvider } from "@/context/flagged-episodes-context";
+import { TrimProvider } from "@/context/trim-context";
 import {
   AnnotationsProvider,
   useAnnotations,
@@ -40,6 +41,7 @@ const ActionInsightsPanel = lazy(
   () => import("@/components/action-insights-panel"),
 );
 const FilteringPanel = lazy(() => import("@/components/filtering-panel"));
+const TrimPanel = lazy(() => import("@/components/trim-panel"));
 // Recharts is ~150KB gz and not above-the-fold (videos render first on the
 // Episodes tab). Lazy-load it so the initial chunk can ship faster and
 // videos start downloading in parallel with the chart bundle.
@@ -68,6 +70,7 @@ type ActiveTab =
   | "frames"
   | "insights"
   | "filtering"
+  | "trim"
   | "doctor"
   | "urdf";
 
@@ -203,10 +206,12 @@ export default function EpisodeViewer({
   return (
     <TimeProvider duration={data!.duration}>
       <FlaggedEpisodesProvider>
-        <AnnotationsProvider>
-          <EpisodeBootstrap data={data!} />
-          <EpisodeViewerInner data={data!} org={org} dataset={dataset} />
-        </AnnotationsProvider>
+        <TrimProvider>
+          <AnnotationsProvider>
+            <EpisodeBootstrap data={data!} />
+            <EpisodeViewerInner data={data!} org={org} dataset={dataset} />
+          </AnnotationsProvider>
+        </TrimProvider>
       </FlaggedEpisodesProvider>
     </TimeProvider>
   );
@@ -273,6 +278,7 @@ function EpisodeViewerInner({
           "frames",
           "insights",
           "filtering",
+          "trim",
           "urdf",
         ].includes(stored)
       ) {
@@ -616,6 +622,11 @@ function EpisodeViewerInner({
           renderTab("urdf", "3D Replay")}
         {renderTab("statistics", "Statistics")}
         {renderTab("filtering", "Filtering")}
+        {renderTab(
+          "trim",
+          "Trim",
+          "Cut motionless head/tail segments from episodes",
+        )}
         {renderTab("frames", "Frames")}
         {renderTab("insights", "Action Insights")}
         {renderTab(
@@ -729,7 +740,7 @@ function EpisodeViewerInner({
                 </Suspense>
               </div>
 
-              <PlaybackBar />
+              <PlaybackBar episodeId={episodeId} />
             </>
           )}
 
@@ -764,7 +775,7 @@ function EpisodeViewerInner({
                   </li>
                 </ul>
               </div>
-              <PlaybackBar />
+              <PlaybackBar episodeId={episodeId} />
               <AnnotationsTimeline duration={data.duration} />
               <AnnotationsPanel
                 cameraKeys={videosInfo.map((v) => v.filename)}
@@ -812,6 +823,18 @@ function EpisodeViewerInner({
                   setSidebarFlaggedOnly(true);
                   handleTabChange("episodes");
                 }}
+              />
+            </Suspense>
+          )}
+
+          {activeTab === "trim" && (
+            <Suspense fallback={<Loading />}>
+              <TrimPanel
+                repoId={datasetInfo.repoId}
+                episodeId={episodeId}
+                duration={data.duration}
+                fps={datasetInfo.fps}
+                flatChartData={data.flatChartData}
               />
             </Suspense>
           )}

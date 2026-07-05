@@ -1,5 +1,6 @@
 import React from "react";
 import { useTime } from "../context/time-context";
+import { useTrims } from "../context/trim-context";
 import {
   FaPlay,
   FaPause,
@@ -10,8 +11,10 @@ import {
   FaArrowUp,
 } from "react-icons/fa";
 
-const PlaybackBar: React.FC = () => {
+const PlaybackBar: React.FC<{ episodeId?: number }> = ({ episodeId }) => {
   const { duration, isPlaying, setIsPlaying, currentTime, seek } = useTime();
+  const { get: getTrim } = useTrims();
+  const trim = episodeId !== undefined ? getTrim(episodeId) : undefined;
 
   const sliderActiveRef = React.useRef(false);
   const wasPlayingRef = React.useRef(false);
@@ -81,20 +84,45 @@ const PlaybackBar: React.FC = () => {
       >
         <FaUndoAlt size={14} />
       </button>
-      <input
-        type="range"
-        min={0}
-        max={duration}
-        step={0.01}
-        value={sliderValue}
-        onChange={handleSliderChange}
-        onMouseDown={handleSliderMouseDown}
-        onMouseUp={handleSliderMouseUp}
-        onTouchStart={handleSliderMouseDown}
-        onTouchEnd={handleSliderMouseUp}
-        className="flex-1 mx-1 h-1 accent-cyan-400 cursor-pointer focus:outline-none focus:ring-0"
-        aria-label="Seek video"
-      />
+      <div className="relative flex-1 mx-1 flex items-center">
+        <input
+          type="range"
+          min={0}
+          max={duration}
+          step={0.01}
+          value={sliderValue}
+          onChange={handleSliderChange}
+          onMouseDown={handleSliderMouseDown}
+          onMouseUp={handleSliderMouseUp}
+          onTouchStart={handleSliderMouseDown}
+          onTouchEnd={handleSliderMouseUp}
+          className="w-full h-1 accent-cyan-400 cursor-pointer focus:outline-none focus:ring-0"
+          aria-label="Seek video"
+        />
+        {/* Regions cut by the pending trim for this episode (Trim tab). */}
+        {trim && duration > 0 && (
+          <>
+            {trim.start > 0 && (
+              <div
+                title={`Trimmed: 0s – ${trim.start.toFixed(2)}s`}
+                className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-l bg-red-500/50 border-r border-red-400"
+                style={{
+                  width: `${Math.min(100, (trim.start / duration) * 100)}%`,
+                }}
+              />
+            )}
+            {trim.end < duration && (
+              <div
+                title={`Trimmed: ${trim.end.toFixed(2)}s – ${duration.toFixed(2)}s`}
+                className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 h-1 rounded-r bg-red-500/50 border-l border-red-400"
+                style={{
+                  width: `${Math.min(100, ((duration - trim.end) / duration) * 100)}%`,
+                }}
+              />
+            )}
+          </>
+        )}
+      </div>
       <span className="w-16 text-right tabular text-[11px] text-slate-400 shrink-0">
         {Math.floor(sliderValue)} / {Math.floor(duration)}
       </span>

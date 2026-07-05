@@ -717,6 +717,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Trim endpoints (/api/trim/detect, /api/trim/apply) live in their own module.
+from trim import router as trim_router  # noqa: E402
+
+app.include_router(trim_router)
+
 
 @app.get("/api/health")
 def health() -> JSONResponse:
