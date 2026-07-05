@@ -89,6 +89,15 @@ formatStringWithVars(info.data_path, {
 | `src/utils/constants.ts`                          | `PADDING`, `EXCLUDED_COLUMNS`, `CHART_CONFIG`, `THRESHOLDS`                                                                              |
 | `src/types/`                                      | TypeScript types: `DatasetVersion`, `EpisodeMetadataV3`, `VideoInfo`, `ChartDataGroup`, etc.                                             |
 
+## Trim feature
+
+Cuts motionless head/tail off episodes. Keep-ranges are **seconds to KEEP** (`{start, end}`, episode-relative).
+
+- `src/utils/trimDetection.ts` — motion-based detection (normalized |Δaction| mean, p95-adaptive threshold). Mirrored in `backend/trim.py` (`_motion_signal`) — **keep the two implementations in sync**.
+- `src/context/trim-context.tsx` — sessionStorage-persisted ep→range map; `src/components/trim-panel.tsx` — Trim tab UI; playback bar shades cut regions red.
+- `backend/trim.py` — `POST /api/trim/detect` (full-res batch detection) and `POST /api/trim/apply` (writes a trimmed copy; never modifies the source). v3.0 videos are untouched — only `videos/{key}/from_timestamp`/`to_timestamp` windows narrow; v2.x videos are re-cut with ffmpeg (h264 re-encode).
+- Gotchas: arrow-backed pandas arrays can be read-only (`.copy()` before mutating); pandas `.at` unwraps length-1 ndarray cells — replace whole columns for array-valued (stats) cells; never hardlink a meta file you later `write_text` (writes through to the source inode).
+
 ## Chart data pipeline
 
 Series keys use `" | "` as delimiter (e.g. `observation.state | 0`).

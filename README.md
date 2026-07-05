@@ -36,6 +36,7 @@ This tool is designed to help robotics researchers and practitioners quickly ins
 - **Statistics Panel:** Dataset-level statistics including episode count, total recording time, frames-per-second, and an episode-length histogram.
 - **Action Insights Panel:** Data-driven analysis tools to guide training configuration — includes autocorrelation, state-action alignment, speed distribution, and cross-episode variance heatmap.
 - **Filtering Panel:** Identify and flag problematic episodes (low movement, jerky motion, outlier length) for removal. Exports flagged episode IDs as a ready-to-run LeRobot CLI command.
+- **Trim Panel:** Cut motionless head/tail segments off episodes. Auto-detects the active range from action data (adjustable sensitivity/padding), previews the cut on the playback bar, and — with the FastAPI backend — writes a trimmed copy of the dataset (v3.0: lossless via video timestamp windows; v2.x: ffmpeg re-cut). Without the backend, exports the trim list as JSON.
 - **3D URDF Viewer:** Visualize robot joint poses frame-by-frame in an interactive 3D scene, with end-effector trail rendering. Supports SO-100, SO-101, and OpenArm bimanual robots.
 - **Annotations Panel:** Hand-edit the v3.1 language schema (`language_persistent` + `language_events`) — subtask, plan, memory, interjection + paired speech, and VQA atoms with bounding-box / keypoint / count / attribute / spatial answers. VQA bboxes and keypoints render as overlays on the video player; drag or click on a camera to draw new ones. Backed by an optional FastAPI service (in `backend/`) for parquet rewrites and HF Hub push.
 - **Efficient Data Loading:** Uses parquet and JSON loading for large dataset support, with pagination, chunking, and lazy-loaded panels for fast initial load.
@@ -138,6 +139,23 @@ The backend exposes:
 - `POST /api/export` — rewrite parquet with the new language columns plus
   the dataset-level `tools` column (drops legacy `subtask_index`)
 - `POST /api/push_to_hub` — export and push to a target repo
+
+### Trim endpoints (`backend/trim.py`)
+
+The same backend also powers the Trim tab:
+
+- `POST /api/trim/detect` — scan every episode's action data at full
+  resolution and suggest per-episode keep-ranges (motionless head/tail
+  detection; `sensitivity`, `padding_seconds`, `min_trim_seconds` params)
+- `POST /api/trim/apply` — write a **trimmed copy** of the dataset (the
+  source is never modified). Rows outside each keep-range are dropped;
+  `timestamp`/`frame_index`/`index` are rebased, episode metadata and
+  per-episode stats rewritten, and `meta/stats.json` recomputed for
+  parquet-backed features. Supports:
+  - **v3.0** — videos untouched (lossless): the episode's
+    `videos/{key}/from_timestamp`/`to_timestamp` window is narrowed instead
+  - **v2.0 / v2.1** — per-episode videos re-cut with ffmpeg (requires
+    `ffmpeg` on the backend PATH; cut segments are re-encoded to h264)
 
 ## Docker Deployment
 
