@@ -100,6 +100,8 @@ interface EditPanelProps {
   duration: number;
   fps: number;
   flatChartData: Record<string, number>[];
+  /** All episode indices in the dataset (for the "another episode" target). */
+  episodes: number[];
 }
 
 function EditPanel({
@@ -108,6 +110,7 @@ function EditPanel({
   duration,
   fps,
   flatChartData,
+  episodes,
 }: EditPanelProps) {
   const { edits, count, add, remove, clear } = useNumericEdits();
   const backendEnabled = isAnnotateBackendEnabled();
@@ -122,7 +125,11 @@ function EditPanel({
   const group = groups[Math.min(featureIdx, Math.max(0, groups.length - 1))];
   const [dimIdx, setDimIdx] = useState<number | "all">(0);
   useEffect(() => setDimIdx(0), [featureIdx]);
-  const [scope, setScope] = useState<"episode" | "all">("episode");
+  const [scope, setScope] = useState<"episode" | "other" | "all">("episode");
+  const [otherEpisode, setOtherEpisode] = useState<number>(episodeId);
+  const otherEpisodeValid =
+    scope !== "other" ||
+    (Number.isInteger(otherEpisode) && episodes.includes(otherEpisode));
   const [useRange, setUseRange] = useState(true);
   const [rangeMode, setRangeMode] = useState<"fraction" | "seconds">(
     "fraction",
@@ -186,12 +193,17 @@ function EditPanel({
   ]);
 
   const handleAdd = useCallback(() => {
-    if (!group) return;
+    if (!group || !otherEpisodeValid) return;
     add({
       feature: group.feature,
       dim: dimIdx === "all" ? null : group.dims[dimIdx].index,
       dimLabel: dimIdx === "all" ? null : group.dims[dimIdx].label,
-      episodeIndex: scope === "episode" ? episodeId : null,
+      episodeIndex:
+        scope === "episode"
+          ? episodeId
+          : scope === "other"
+            ? otherEpisode
+            : null,
       range,
       op,
       value,
@@ -202,6 +214,8 @@ function EditPanel({
     dimIdx,
     scope,
     episodeId,
+    otherEpisode,
+    otherEpisodeValid,
     op,
     value,
     useRange,
@@ -349,14 +363,32 @@ function EditPanel({
                 <select
                   value={scope}
                   onChange={(e) =>
-                    setScope(e.target.value as "episode" | "all")
+                    setScope(e.target.value as "episode" | "other" | "all")
                   }
                   className={SELECT_CLASS}
                 >
                   <option value="episode">this episode ({episodeId})</option>
+                  <option value="other">another episode…</option>
                   <option value="all">all episodes</option>
                 </select>
               </label>
+              {scope === "other" && (
+                <label className="flex items-center gap-2">
+                  episode
+                  <input
+                    type="number"
+                    min={episodes[0] ?? 0}
+                    max={episodes[episodes.length - 1] ?? 0}
+                    step={1}
+                    value={otherEpisode}
+                    onChange={(e) => setOtherEpisode(Number(e.target.value))}
+                    className={`w-20 bg-[var(--bg)]/50 border rounded px-1.5 py-1 text-slate-200 tabular-nums ${otherEpisodeValid ? "border-white/10" : "border-red-400/60"}`}
+                  />
+                  {!otherEpisodeValid && (
+                    <span className="text-red-300">not in dataset</span>
+                  )}
+                </label>
+              )}
             </div>
 
             {/* range */}
@@ -442,6 +474,8 @@ function EditPanel({
                   Preview — {previewDim.key}
                   {dimIdx === "all" && " (first of all dims)"} · gray = before,
                   cyan = after
+                  {scope === "other" &&
+                    ` · preview shows episode ${episodeId}'s data — for a different target episode, "% of episode" ranges are recommended`}
                 </p>
                 <EditPreview
                   original={preview.original}
@@ -454,7 +488,7 @@ function EditPanel({
             <div className="flex justify-end">
               <button
                 onClick={handleAdd}
-                disabled={!Number.isFinite(value)}
+                disabled={!Number.isFinite(value) || !otherEpisodeValid}
                 className="text-xs bg-cyan-400/15 text-cyan-300 border border-cyan-400/40 rounded px-3 py-1.5 hover:bg-cyan-400/20 transition-colors disabled:opacity-40"
               >
                 Add edit

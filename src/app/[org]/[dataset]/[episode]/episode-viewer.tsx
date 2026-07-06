@@ -858,6 +858,7 @@ function EpisodeViewerInner({
                 duration={data.duration}
                 fps={datasetInfo.fps}
                 flatChartData={data.flatChartData}
+                episodes={episodes}
               />
             </Suspense>
           )}
