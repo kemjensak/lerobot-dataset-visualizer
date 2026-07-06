@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useNumericEdits } from "@/context/edit-context";
 import {
   applyEditToSeries,
@@ -112,6 +113,7 @@ function EditPanel({
   flatChartData,
   episodes,
 }: EditPanelProps) {
+  const router = useRouter();
   const { edits, count, add, remove, clear } = useNumericEdits();
   const backendEnabled = isAnnotateBackendEnabled();
 
@@ -382,8 +384,25 @@ function EditPanel({
                     step={1}
                     value={otherEpisode}
                     onChange={(e) => setOtherEpisode(Number(e.target.value))}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        otherEpisodeValid &&
+                        otherEpisode !== episodeId
+                      ) {
+                        router.push(`./episode_${otherEpisode}`);
+                      }
+                    }}
                     className={`w-20 bg-[var(--bg)]/50 border rounded px-1.5 py-1 text-slate-200 tabular-nums ${otherEpisodeValid ? "border-white/10" : "border-red-400/60"}`}
                   />
+                  <button
+                    onClick={() => router.push(`./episode_${otherEpisode}`)}
+                    disabled={!otherEpisodeValid || otherEpisode === episodeId}
+                    title="Load this episode in the viewer — the Edit tab stays open and the preview switches to its data"
+                    className="text-xs bg-cyan-400/15 text-cyan-300 border border-cyan-400/40 rounded px-2 py-1 hover:bg-cyan-400/20 transition-colors disabled:opacity-40"
+                  >
+                    switch to ep {otherEpisodeValid ? otherEpisode : "…"}
+                  </button>
                   {!otherEpisodeValid && (
                     <span className="text-red-300">not in dataset</span>
                   )}
