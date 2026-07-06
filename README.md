@@ -169,6 +169,18 @@ The same backend also powers the Trim tab:
   are recomputed; rows, timestamps, indices and videos are untouched
   (videos are hardlinked).
 
+### Image (camera) stats
+
+Image-feature stats can't be recomputed from parquet alone — they require
+decoding video frames. Both apply endpoints accept
+`recompute_image_stats: true` (exposed as a checkbox in the Trim/Edit
+panels), which samples up to `image_stats_samples` (default 32)
+evenly-spaced frames per episode/camera with ffmpeg (downscaled, matching
+lerobot's own sample-based image stats), recomputes per-channel
+min/max/mean/std normalized to [0, 1], and updates both the per-episode
+stats and `meta/stats.json`. Off by default because decoding is slow; when
+off, image stats are carried over unchanged with a warning.
+
 ## Docker Deployment
 
 This application can be deployed using Docker with bun for optimal performance and self-contained builds.

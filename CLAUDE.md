@@ -105,6 +105,7 @@ Rewrites numeric feature values over a frame range (e.g. `observation.state[3] =
 - `src/utils/numericEdit.ts` — op types, frame-mask (`editFrameMask`) and preview (`applyEditToSeries`). Mask semantics mirrored in `backend/edits.py` (`_range_mask`) — **keep in sync**. Fraction mode: `round(start·n) <= i < round(end·n)`; seconds mode: episode-relative ±half-frame.
 - `src/context/edit-context.tsx` — sessionStorage op list; `src/components/edit-panel.tsx` — Edit tab (builder + before/after preview).
 - `backend/edits.py` — `POST /api/edit/apply`; reuses trim.py's stats machinery (`_episode_stats`, `_GlobalStatsAccumulator`, `_match_shape`, `_rewrite_global_stats_json`). Column arrow types (fixed_size_list/list/scalar) are preserved via `_rebuild_feature_column`. Rows/timestamps/indices/videos unchanged; videos hardlinked.
+- `backend/videostats.py` — optional image-feature stats recompute (`recompute_image_stats: true` on both apply endpoints): samples N evenly-spaced downscaled frames per episode/camera via one ffmpeg call (v3: from/to_timestamp window; v2: whole per-episode file), per-channel stats normalized to [0,1]; patches per-episode stats (v3 meta columns / v2.1 episodes_stats.jsonl) and feeds `_rewrite_global_stats_json` via its `extra_stats` param. Imports from trim.py lazily inside the function to avoid a circular import.
 - Chart-key → dim-index mapping: keys `"{feature} | {name}"` are generated in `names[]` order, so a key's position within its feature group IS its parquet dim index (`featureGroupsFromRow`).
 
 ## Chart data pipeline

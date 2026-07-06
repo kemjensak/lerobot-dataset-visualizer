@@ -84,6 +84,10 @@ class TrimDetectRequest(TrimDatasetRef):
 class TrimApplyRequest(TrimDatasetRef):
     trims: dict[str, TrimRangeModel]
     output_dir: str | None = None
+    # Also resample image-feature stats from the output videos (requires
+    # decoding frames with ffmpeg — slower). See backend/videostats.py.
+    recompute_image_stats: bool = False
+    image_stats_samples: int = 32
 
 
 # --- Dataset resolution ---------------------------------------------------------
@@ -405,11 +409,12 @@ def _rewrite_global_stats_json(
     dst: Path,
     global_acc: _GlobalStatsAccumulator,
     warnings: list[str],
+    extra_stats: dict[str, dict[str, np.ndarray]] | None = None,
 ) -> None:
     stats = json.loads(src.read_text())
     untouched: list[str] = []
     for feature, feature_stats in stats.items():
-        recomputed = global_acc.stats_for(feature)
+        recomputed = (extra_stats or {}).get(feature) or global_acc.stats_for(feature)
         if recomputed is None:
             untouched.append(feature)
             continue
@@ -420,7 +425,8 @@ def _rewrite_global_stats_json(
     if untouched:
         warnings.append(
             "meta/stats.json: kept original stats for features not in the data "
-            f"parquet (recompute needs frame decoding): {', '.join(sorted(untouched))}"
+            f"parquet: {', '.join(sorted(untouched))} — enable "
+            "recompute_image_stats to resample them from video frames"
         )
 
 
@@ -869,6 +875,14 @@ def apply_trims(req: TrimApplyRequest) -> dict[str, Any]:
         stats = _apply_v2(root, out_root, info, trims, warnings)
     global_acc = stats.pop("_global_acc")
 
+    image_stats: dict[str, Any] = {}
+    if req.recompute_image_stats:
+        from videostats import recompute_image_stats
+
+        image_stats = recompute_image_stats(
+            out_root, info, major, max(1, req.image_stats_samples), warnings
+        )
+
     # Copy remaining meta files (tasks, modality configs, …) that we didn't
     # rewrite, then patch info.json and recompute stats.json when present.
     # info.json is always freshly written (never hardlinked — a hardlink
@@ -886,7 +900,7 @@ def apply_trims(req: TrimApplyRequest) -> dict[str, Any]:
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
         if src.name == "stats.json":
-            _rewrite_global_stats_json(src, dst, global_acc, warnings)
+            _rewrite_global_stats_json(src, dst, global_acc, warnings, image_stats)
             continue
         _link_or_copy(src, dst)
 

@@ -20,7 +20,7 @@ export interface ApplyEditsResult {
 export async function applyEditsBackend(
   ident: TrimDatasetIdent,
   edits: NumericEdit[],
-  options: { outputDir?: string | null } = {},
+  options: { outputDir?: string | null; recomputeImageStats?: boolean } = {},
 ): Promise<ApplyEditsResult> {
   const base = getAnnotateBackendUrl();
   if (!base) throw new Error("Backend not configured");
@@ -32,6 +32,7 @@ export async function applyEditsBackend(
       revision: ident.revision || null,
       local_path: ident.localPath || null,
       output_dir: options.outputDir || null,
+      recompute_image_stats: !!options.recomputeImageStats,
       edits: edits.map((e) => ({
         feature: e.feature,
         dim: e.dim,

@@ -83,7 +83,7 @@ export async function detectTrimsBackend(
 export async function applyTrimsBackend(
   ident: TrimDatasetIdent,
   trims: Map<number, TrimRange>,
-  options: { outputDir?: string | null } = {},
+  options: { outputDir?: string | null; recomputeImageStats?: boolean } = {},
 ): Promise<ApplyTrimsResult> {
   const trimsObj: Record<string, TrimRange> = {};
   for (const [ep, range] of trims) trimsObj[String(ep)] = range;
@@ -91,5 +91,6 @@ export async function applyTrimsBackend(
     ...identBody(ident),
     trims: trimsObj,
     output_dir: options.outputDir || null,
+    recompute_image_stats: !!options.recomputeImageStats,
   });
 }
