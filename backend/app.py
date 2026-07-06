@@ -717,10 +717,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Trim endpoints (/api/trim/detect, /api/trim/apply) live in their own module.
+# Trim endpoints (/api/trim/detect, /api/trim/apply) and numeric-edit
+# endpoints (/api/edit/apply) live in their own modules.
 from trim import router as trim_router  # noqa: E402
+from edits import router as edits_router  # noqa: E402
 
 app.include_router(trim_router)
+app.include_router(edits_router)
 
 
 @app.get("/api/health")

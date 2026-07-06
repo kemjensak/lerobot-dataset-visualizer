@@ -37,6 +37,7 @@ This tool is designed to help robotics researchers and practitioners quickly ins
 - **Action Insights Panel:** Data-driven analysis tools to guide training configuration — includes autocorrelation, state-action alignment, speed distribution, and cross-episode variance heatmap.
 - **Filtering Panel:** Identify and flag problematic episodes (low movement, jerky motion, outlier length) for removal. Exports flagged episode IDs as a ready-to-run LeRobot CLI command.
 - **Trim Panel:** Cut motionless head/tail segments off episodes. Auto-detects the active range from action data (adjustable sensitivity/padding), previews the cut on the playback bar, and — with the FastAPI backend — writes a trimmed copy of the dataset (v3.0: lossless via video timestamp windows; v2.x: ffmpeg re-cut). Without the backend, exports the trim list as JSON.
+- **Edit Panel:** Rewrite numeric feature values over a frame range — e.g. set `observation.state[odom_x]` to 1.0 for the second half of an episode. Supports set/offset/scale on one dimension or all dims, per episode or dataset-wide, with a before/after preview. Applying (via the backend) writes a modified copy with per-episode and global stats recomputed automatically.
 - **3D URDF Viewer:** Visualize robot joint poses frame-by-frame in an interactive 3D scene, with end-effector trail rendering. Supports SO-100, SO-101, and OpenArm bimanual robots.
 - **Annotations Panel:** Hand-edit the v3.1 language schema (`language_persistent` + `language_events`) — subtask, plan, memory, interjection + paired speech, and VQA atoms with bounding-box / keypoint / count / attribute / spatial answers. VQA bboxes and keypoints render as overlays on the video player; drag or click on a camera to draw new ones. Backed by an optional FastAPI service (in `backend/`) for parquet rewrites and HF Hub push.
 - **Efficient Data Loading:** Uses parquet and JSON loading for large dataset support, with pagination, chunking, and lazy-loaded panels for fast initial load.
@@ -156,6 +157,17 @@ The same backend also powers the Trim tab:
     `videos/{key}/from_timestamp`/`to_timestamp` window is narrowed instead
   - **v2.0 / v2.1** — per-episode videos re-cut with ffmpeg (requires
     `ffmpeg` on the backend PATH; cut segments are re-encoded to h264)
+
+### Numeric-edit endpoint (`backend/edits.py`)
+
+- `POST /api/edit/apply` — apply a list of numeric edits
+  (`{feature, dim, episode_index, range, op: set|add|scale, value}`) and
+  write a **modified copy** of the dataset. Frame ranges are given as a
+  fraction of the episode or in seconds. Column arrow types
+  (fixed_size_list / list / scalar) are preserved; per-episode stats
+  (v3 `stats/*` columns, v2.1 `episodes_stats.jsonl`) and `meta/stats.json`
+  are recomputed; rows, timestamps, indices and videos are untouched
+  (videos are hardlinked).
 
 ## Docker Deployment
 

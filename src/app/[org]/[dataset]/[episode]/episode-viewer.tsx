@@ -8,6 +8,7 @@ import PlaybackBar from "@/components/playback-bar";
 import { TimeProvider, useTime } from "@/context/time-context";
 import { FlaggedEpisodesProvider } from "@/context/flagged-episodes-context";
 import { TrimProvider } from "@/context/trim-context";
+import { EditProvider } from "@/context/edit-context";
 import {
   AnnotationsProvider,
   useAnnotations,
@@ -42,6 +43,7 @@ const ActionInsightsPanel = lazy(
 );
 const FilteringPanel = lazy(() => import("@/components/filtering-panel"));
 const TrimPanel = lazy(() => import("@/components/trim-panel"));
+const EditPanel = lazy(() => import("@/components/edit-panel"));
 // Recharts is ~150KB gz and not above-the-fold (videos render first on the
 // Episodes tab). Lazy-load it so the initial chunk can ship faster and
 // videos start downloading in parallel with the chart bundle.
@@ -71,6 +73,7 @@ type ActiveTab =
   | "insights"
   | "filtering"
   | "trim"
+  | "edit"
   | "doctor"
   | "urdf";
 
@@ -207,10 +210,12 @@ export default function EpisodeViewer({
     <TimeProvider duration={data!.duration}>
       <FlaggedEpisodesProvider>
         <TrimProvider>
-          <AnnotationsProvider>
-            <EpisodeBootstrap data={data!} />
-            <EpisodeViewerInner data={data!} org={org} dataset={dataset} />
-          </AnnotationsProvider>
+          <EditProvider>
+            <AnnotationsProvider>
+              <EpisodeBootstrap data={data!} />
+              <EpisodeViewerInner data={data!} org={org} dataset={dataset} />
+            </AnnotationsProvider>
+          </EditProvider>
         </TrimProvider>
       </FlaggedEpisodesProvider>
     </TimeProvider>
@@ -279,6 +284,7 @@ function EpisodeViewerInner({
           "insights",
           "filtering",
           "trim",
+          "edit",
           "urdf",
         ].includes(stored)
       ) {
@@ -627,6 +633,11 @@ function EpisodeViewerInner({
           "Trim",
           "Cut motionless head/tail segments from episodes",
         )}
+        {renderTab(
+          "edit",
+          "Edit",
+          "Rewrite numeric feature values over a frame range",
+        )}
         {renderTab("frames", "Frames")}
         {renderTab("insights", "Action Insights")}
         {renderTab(
@@ -830,6 +841,18 @@ function EpisodeViewerInner({
           {activeTab === "trim" && (
             <Suspense fallback={<Loading />}>
               <TrimPanel
+                repoId={datasetInfo.repoId}
+                episodeId={episodeId}
+                duration={data.duration}
+                fps={datasetInfo.fps}
+                flatChartData={data.flatChartData}
+              />
+            </Suspense>
+          )}
+
+          {activeTab === "edit" && (
+            <Suspense fallback={<Loading />}>
+              <EditPanel
                 repoId={datasetInfo.repoId}
                 episodeId={episodeId}
                 duration={data.duration}

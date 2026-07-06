@@ -98,6 +98,15 @@ Cuts motionless head/tail off episodes. Keep-ranges are **seconds to KEEP** (`{s
 - `backend/trim.py` — `POST /api/trim/detect` (full-res batch detection) and `POST /api/trim/apply` (writes a trimmed copy; never modifies the source). v3.0 videos are untouched — only `videos/{key}/from_timestamp`/`to_timestamp` windows narrow; v2.x videos are re-cut with ffmpeg (h264 re-encode).
 - Gotchas: arrow-backed pandas arrays can be read-only (`.copy()` before mutating); pandas `.at` unwraps length-1 ndarray cells — replace whole columns for array-valued (stats) cells; never hardlink a meta file you later `write_text` (writes through to the source inode).
 
+## Numeric edit feature
+
+Rewrites numeric feature values over a frame range (e.g. `observation.state[3] = 1.0` for the second half of an episode) and recomputes stats.
+
+- `src/utils/numericEdit.ts` — op types, frame-mask (`editFrameMask`) and preview (`applyEditToSeries`). Mask semantics mirrored in `backend/edits.py` (`_range_mask`) — **keep in sync**. Fraction mode: `round(start·n) <= i < round(end·n)`; seconds mode: episode-relative ±half-frame.
+- `src/context/edit-context.tsx` — sessionStorage op list; `src/components/edit-panel.tsx` — Edit tab (builder + before/after preview).
+- `backend/edits.py` — `POST /api/edit/apply`; reuses trim.py's stats machinery (`_episode_stats`, `_GlobalStatsAccumulator`, `_match_shape`, `_rewrite_global_stats_json`). Column arrow types (fixed_size_list/list/scalar) are preserved via `_rebuild_feature_column`. Rows/timestamps/indices/videos unchanged; videos hardlinked.
+- Chart-key → dim-index mapping: keys `"{feature} | {name}"` are generated in `names[]` order, so a key's position within its feature group IS its parquet dim index (`featureGroupsFromRow`).
+
 ## Chart data pipeline
 
 Series keys use `" | "` as delimiter (e.g. `observation.state | 0`).
