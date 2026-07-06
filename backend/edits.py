@@ -77,6 +77,11 @@ class NumericEditModel(BaseModel):
 class EditApplyRequest(TrimDatasetRef):
     edits: list[NumericEditModel]
     output_dir: str | None = None
+    # Resample image-feature stats from video frames (ffmpeg; slower). Numeric
+    # edits never change pixels, so this is mainly for refreshing stats that
+    # were already stale (e.g. after external processing).
+    recompute_image_stats: bool = False
+    image_stats_samples: int = 32
 
 
 # --- Core ----------------------------------------------------------------------
@@ -337,6 +342,14 @@ def apply_edits(req: EditApplyRequest) -> dict[str, Any]:
     if src_videos.exists():
         _copy_tree_linked(src_videos, out_root / "videos")
 
+    image_stats: dict[str, Any] = {}
+    if req.recompute_image_stats:
+        from videostats import recompute_image_stats
+
+        image_stats = recompute_image_stats(
+            out_root, info, major, max(1, req.image_stats_samples), warnings
+        )
+
     # Remaining meta files: recompute stats.json, carry the rest over.
     # info.json is written fresh (never hardlinked) even though its content
     # is unchanged, to keep the copy independent of the source inode.
@@ -353,7 +366,7 @@ def apply_edits(req: EditApplyRequest) -> dict[str, Any]:
             continue
         dst.parent.mkdir(parents=True, exist_ok=True)
         if src.name == "stats.json":
-            _rewrite_global_stats_json(src, dst, acc.global_acc, warnings)
+            _rewrite_global_stats_json(src, dst, acc.global_acc, warnings, image_stats)
             continue
         _link_or_copy(src, dst)
     (out_meta / "info.json").write_text(

@@ -237,6 +237,7 @@ function TrimPanel({
 
   const [detectingAll, setDetectingAll] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [recomputeImageStats, setRecomputeImageStats] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState<ApplyTrimsResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -272,6 +273,7 @@ function TrimPanel({
     try {
       const result = await applyTrimsBackend(ident, trims, {
         outputDir: outputDir || null,
+        recomputeImageStats,
       });
       setApplyResult(result);
     } catch (err) {
@@ -279,7 +281,7 @@ function TrimPanel({
     } finally {
       setApplying(false);
     }
-  }, [ident, trims, outputDir]);
+  }, [ident, trims, outputDir, recomputeImageStats]);
 
   const exportJson = useMemo(() => {
     const obj: Record<string, TrimRange> = {};
@@ -626,6 +628,18 @@ function TrimPanel({
                 />
               </label>
             </div>
+            <label
+              className="flex items-center gap-1.5 text-xs text-slate-400"
+              title="Decodes sampled video frames with ffmpeg to refresh image-feature stats (min/max/mean/std per channel) after the trim. Without this, camera stats keep their pre-trim values."
+            >
+              <input
+                type="checkbox"
+                checked={recomputeImageStats}
+                onChange={(e) => setRecomputeImageStats(e.target.checked)}
+                className="accent-cyan-400"
+              />
+              also recompute image (camera) stats from video frames — slower
+            </label>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleApply}

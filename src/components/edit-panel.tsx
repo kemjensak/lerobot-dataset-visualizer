@@ -231,6 +231,7 @@ function EditPanel({
   };
 
   const [applying, setApplying] = useState(false);
+  const [recomputeImageStats, setRecomputeImageStats] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState<ApplyEditsResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -243,7 +244,7 @@ function EditPanel({
       const result = await applyEditsBackend(
         { repoId: localPath ? null : repoId, localPath: localPath || null },
         edits,
-        { outputDir: outputDir || null },
+        { outputDir: outputDir || null, recomputeImageStats },
       );
       setApplyResult(result);
     } catch (err) {
@@ -251,7 +252,7 @@ function EditPanel({
     } finally {
       setApplying(false);
     }
-  }, [repoId, localPath, outputDir, edits]);
+  }, [repoId, localPath, outputDir, edits, recomputeImageStats]);
 
   const exportJson = useMemo(() => editsToJson(repoId, edits), [repoId, edits]);
   const handleCopyJson = useCallback(() => {
@@ -552,6 +553,18 @@ function EditPanel({
                 />
               </label>
             </div>
+            <label
+              className="flex items-center gap-1.5 text-xs text-slate-400"
+              title="Decodes sampled video frames with ffmpeg to refresh image-feature stats (min/max/mean/std per channel). Numeric edits don't change pixels, so use this to fix stats that were already stale."
+            >
+              <input
+                type="checkbox"
+                checked={recomputeImageStats}
+                onChange={(e) => setRecomputeImageStats(e.target.checked)}
+                className="accent-cyan-400"
+              />
+              also recompute image (camera) stats from video frames — slower
+            </label>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleApply}
